@@ -27,7 +27,6 @@ class NMQueueInitException : public std::exception
                 case NMQueueFailedInitCode::Mutex:
                     return "Failed to initialize mutex";
             }
-            return ""; // Should be unnecessary, since all cases are catched in the switch
         }
 };
 
@@ -46,7 +45,7 @@ class NMQueue
     public:
         NMQueue()
         {
-            enum NMQueueFailedInitCode error;
+            NMQueueFailedInitCode error;
             if ( pthread_mutex_init( &mutex, nullptr ) == 0 )
             {
                 if ( pthread_cond_init( &writtenCond, nullptr ) == 0 )
@@ -128,12 +127,21 @@ class NMQueue
                 }
             }
 
-            readPosition = (readPosition+1) & Length;
+            readPosition = (readPosition+1) % Length;
             pthread_cond_signal( &readCond );
             pthread_mutex_unlock( &mutex );
 
             return true;
 
+        }
+
+        void abortThread(void* id)
+        {
+            abortId = id;
+            pthread_mutex_lock( &mutex );
+            pthread_cond_broadcast( &readCond );
+            pthread_cond_broadcast( &writtenCond );
+            pthread_mutex_unlock( &mutex );
         }
 
         NMQueue( const NMQueue&& ) = delete;

@@ -1,50 +1,88 @@
 #include "src/nmqueue.hpp"
 #include "src/nmthread.hpp"
+
 #include <iostream>
+#include <atomic>
 
-const long threadCount = 128;
+#include <unistd.h>
 
-class ThreadC : public NMThread
+const long receiverCount = 1;
+const long senderCount   = 1;
+const long sendCount     = 10000000;
+
+NMQueue<void*, 10000> queue;
+
+std::atomic<long> receivedPackets(0);
+
+class SendThread : public NMThread
 {
     public:
-        long id;
-    private:
         void run() override;
 };
 
-void ThreadC::run()
+class ReceiveThread : public NMThread
 {
-    std::cout<<id<<std::endl;
+    public:
+        long received = 0;
+        void run() override;
+};
+
+void SendThread::run()
+{
+    for( long i=0; i<sendCount; ++i )
+    {
+        if(!queue.send(NULL, this))
+        {
+            std::cout<<"Premature abort."<<std::endl;
+            break;
+        }
+    }
 }
 
-NMQueue<void*, 1024> queue;
-
-ThreadC threads[threadCount];
-
-void sender()
-{
-    queue.send(NULL, NULL);
-}
-
-void receiver()
+void ReceiveThread::run()
 {
     void* data;
-    queue.receive(data, NULL);
+    while(queue.receive(data, this))
+    {
+        received++;
+        receivedPackets++;
+    }
 }
 
-int main(int argc, char** args)
+SendThread    sendThreads[senderCount];
+ReceiveThread receiveThreads[receiverCount];
+
+int main(int, char**)
 {
+    for( long id = 0; id<receiverCount; ++id )
     {
-        long id=0;
-        for(id=0;id<threadCount;++id)
-        {
-            threads[id].id=id;
-            threads[id].start();
-        }
-        for(id=0;id<threadCount;++id)
-        {
-            threads[id].stop();
-        }
+        receiveThreads[id].start();
+    }
+    for( long id = 0; id<senderCount ; ++id )
+    {
+        sendThreads[id].start();
+    }
+
+    while( receivedPackets < sendCount*senderCount )
+    {
+        sleep(1);
+    }
+    std::cout<<"All packets received."<<std::endl;
+
+    for( long id = 0; id<receiverCount; ++id )
+    {
+        std::cout<<"Thread "<<id<<" received "<<receiveThreads[id].received<<std::endl;
+    }
+
+    for( long id = 0; id<receiverCount; ++id )
+    {
+        queue.abortThread( &receiveThreads[id] );
+        receiveThreads[id].stop();
+    }
+    for( long id = 0; id<senderCount; ++id )
+    {
+        queue.abortThread( &sendThreads[id] );
+        sendThreads[id].stop();
     }
     return 0;
 }

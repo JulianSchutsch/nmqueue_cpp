@@ -2,6 +2,22 @@
 #define _NMTHREAD_HEADERPP_
 
 #include <pthread.h>
+#include <exception>
+
+class NMThreadStopStoppedException : public std::exception
+{
+    const char * what() const noexcept override;
+};
+
+class NMThreadRestartException : public std::exception
+{
+    const char * what() const noexcept override;
+};
+
+class NMThreadStartException : public std::exception
+{
+    const char * what() const noexcept override;
+};
 
 class NMThread
 {
@@ -14,7 +30,7 @@ class NMThread
         void start();
         void stop();
         NMThread();
-        ~NMThread();
+        virtual ~NMThread();
 
         friend void* threadProc(void*) noexcept;
 
