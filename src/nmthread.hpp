@@ -29,6 +29,7 @@ class NMThread
         virtual void run() = 0;
         void start();
         void stop();
+
         NMThread();
         virtual ~NMThread();
 

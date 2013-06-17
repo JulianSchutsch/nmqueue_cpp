@@ -34,10 +34,13 @@ template <class Element, unsigned int Length>
 class NMQueue
 {
     private:
+        // Circular buffer
         Element         queue[Length];
         size_t          readPosition  = 0;
         size_t          writePosition = 0;
+
         void*           abortId       = nullptr;
+
         pthread_mutex_t mutex;
         pthread_cond_t  writtenCond;
         pthread_cond_t  readCond;
@@ -72,7 +75,7 @@ class NMQueue
             pthread_mutex_destroy( &mutex );
         }
 
-        // Return true if send was successfull
+        // Return true on successfull send, otherwise abort was received
         bool send(Element data,
                   void*   threadId) noexcept
         {
@@ -105,6 +108,7 @@ class NMQueue
 
         }
 
+        // Return true on successfull receive, otherwise abort was received
         bool receive(Element& data,
                      void*    threadId) noexcept
         {
