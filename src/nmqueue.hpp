@@ -131,6 +131,7 @@ class NMQueue
                 }
             }
 
+            data = queue[readPosition];
             readPosition = (readPosition+1) % Length;
             pthread_cond_signal( &readCond );
             pthread_mutex_unlock( &mutex );
